@@ -1,64 +1,90 @@
 import streamlit as st
 
 # 페이지 설정
-st.set_page_config(page_title="과목별 영화 추천", page_icon="🎬")
+st.set_page_config(page_title="과목별 영화 추천 서비스", page_icon="📚")
 
-# 데이터 설정 (안정적인 이미지 주소로 교체)
+# 13개 과목별 데이터 설정
 movie_data = {
-    "수학": {
-        "title": "이미테이션 게임 (The Imitation Game)",
-        "info": "장르: 드라마, 스릴러 | 주연: 베네딕트 컴버배치",
-        "reason": "암호 해독을 위해 수학적 논리를 사용하는 과정이 흥미진진합니다.",
-        "image_url": "https://upload.wikimedia.org/wikipedia/en/5/5e/The_Imitation_Game_poster.jpg"
-    },
-    "과학": {
-        "title": "인터스텔라 (Interstellar)",
-        "info": "장르: SF | 감독: 크리스토퍼 놀란",
-        "reason": "상대성 이론과 블랙홀 등 실제 과학 이론을 멋지게 시각화했습니다.",
-        "image_url": "https://upload.wikimedia.org/wikipedia/en/b/bc/Interstellar_film_poster.jpg"
-    },
-    "역사": {
-        "title": "명량 (The Admiral)",
-        "info": "장르: 사극, 액션 | 주연: 최민식",
-        "reason": "역사적 사실을 바탕으로 한 위대한 승리의 기록을 볼 수 있습니다.",
-        "image_url": "https://upload.wikimedia.org/wikipedia/en/a/a5/The_Admiral_Roaring_Currents_poster.jpg"
-    },
-    "미술": {
-        "title": "러빙 빈센트 (Loving Vincent)",
-        "info": "장르: 애니메이션 | 내용: 반 고흐의 일생",
-        "reason": "모든 장면이 유화로 그려진 미술 작품 그 자체인 영화입니다.",
-        "image_url": "https://upload.wikimedia.org/wikipedia/en/0/01/Loving_Vincent_poster.jpg"
-    },
-    "체육": {
-        "title": "머니볼 (Moneyball)",
-        "info": "장르: 드라마, 야구 | 주연: 브래드 피트",
-        "reason": "데이터 분석을 통해 야구 경기의 판도를 바꾸는 전략적인 영화입니다.",
-        "image_url": "https://upload.wikimedia.org/wikipedia/en/2/2e/Moneyball_Poster.jpg"
-    }
+    "수학": [
+        {"title": "이미테이션 게임", "info": "드라마 | 주연: 베네딕트 컴버배치", "ott": "넷플릭스, 티빙", "reason": "천재 수학자가 수학적 논리로 전쟁의 암호를 해독하는 긴박한 과정을 담았습니다."},
+        {"title": "이상한 나라의 수학자", "info": "드라마 | 주연: 최민식", "ott": "넷플릭스, 왓챠", "reason": "정답보다 과정의 중요함을 일깨워주며 수학의 아름다움을 말하는 한국 영화입니다."}
+    ],
+    "영어": [
+        {"title": "킹스 스피치", "info": "드라마 | 주연: 콜린 퍼스", "ott": "넷플릭스, 티빙", "reason": "영국 국왕의 실화를 통해 언어의 힘과 소통의 중요성을 느낄 수 있는 작품입니다."},
+        {"title": "죽은 시인의 사회", "info": "드라마 | 주연: 로빈 윌리엄스", "ott": "디즈니+, 왓챠", "reason": "영문학을 통해 삶의 의미를 깨닫고 '카르페 디엠'을 외치는 감동적인 명작입니다."}
+    ],
+    "국어": [
+        {"title": "말모이", "info": "드라마 | 주연: 유해진, 윤계상", "ott": "넷플릭스, 티빙", "reason": "우리말이 금지된 시대, 말을 지켜 나라를 지키려 했던 사람들의 눈물겨운 사전 만들기 이야기입니다."},
+        {"title": "동주", "info": "드라마 | 주연: 강하늘, 박정민", "ott": "넷플릭스, 왓챠", "reason": "시인 윤동주의 삶을 통해 우리 문학과 언어에 담긴 시대적 아픔을 깊이 있게 다룹니다."}
+    ],
+    "역사": [
+        {"title": "남한산성", "info": "사극 | 주연: 이병헌, 김윤석", "ott": "넷플릭스, 티빙", "reason": "병자호란 당시 조선의 운명을 둔 치열한 논쟁을 통해 역사의 무게를 배울 수 있습니다."},
+        {"title": "1987", "info": "드라마 | 주연: 김윤석, 하정우", "ott": "넷플릭스, 티빙", "reason": "한국 현대사의 큰 전환점인 6월 민주항쟁의 과정을 진정성 있게 그려냈습니다."}
+    ],
+    "물리": [
+        {"title": "오펜하이머", "info": "전기, 드라마 | 감독: 크리스토퍼 놀란", "ott": "티빙, 웨이브", "reason": "양자역학과 원자폭탄 개발 과정을 통해 물리학자의 고뇌와 우주의 원리를 다룹니다."},
+        {"title": "테넷", "info": "SF, 액션 | 감독: 크리스토퍼 놀란", "ott": "넷플릭스, 쿠팡플레이", "reason": "엔트로피의 법칙과 시간의 흐름을 뒤집는 인버전 개념을 시각화한 물리 액션 영화입니다."}
+    ],
+    "화학": [
+        {"title": "마담 퀴리", "info": "전기, 드라마 | 주연: 로자먼드 파이크", "ott": "왓챠, 웨이브", "reason": "방사능 발견이라는 화학사적 업적 뒤에 숨겨진 마리 퀴리의 열정과 헌신을 보여줍니다."},
+        {"title": "다크 워터스", "info": "드라마, 스릴러 | 주연: 마크 러팔로", "ott": "넷플릭스, 왓챠", "reason": "독성 화학물질(PFOA)의 위험성을 세상에 알리는 과정을 통해 화학의 사회적 책임을 다룹니다."}
+    ],
+    "지구과학": [
+        {"title": "투모로우", "info": "재난, SF | 주연: 데니스 퀘이드", "ott": "디즈니+", "reason": "급격한 기후 변화로 인한 빙하기를 그려내며 지구 환경의 소중함을 일깨워줍니다."},
+        {"title": "컨택트(Arrival)", "info": "SF | 주연: 에이미 아담스", "ott": "넷플릭스", "reason": "외계 생명체와의 조우를 통해 언어와 시간, 그리고 지구 밖 세계에 대한 상상력을 자극합니다."}
+    ],
+    "생명과학": [
+        {"title": "가타카", "info": "SF, 드라마 | 주연: 에단 호크", "ott": "넷플릭스, 왓챠", "reason": "유전자 조작이 일상화된 미래를 통해 생명 윤리와 인간의 의지에 대해 질문을 던집니다."},
+        {"title": "아일랜드", "info": "SF, 액션 | 주연: 이완 맥그리거", "ott": "넷플릭스, 티빙", "reason": "복제인간 테마를 통해 생명 복제의 기술적 측면과 윤리적 문제를 동시에 다룹니다."}
+    ],
+    "사회문제": [
+        {"title": "기생충", "info": "드라마, 스릴러 | 감독: 봉준호", "ott": "넷플릭스, 티빙", "reason": "현대 사회의 계급 갈등과 빈부격차 문제를 날카롭고 은유적으로 묘사한 작품입니다."},
+        {"title": "나, 다니엘 블레이크", "info": "드라마 | 감독: 켄 로치", "ott": "왓챠", "reason": "복지 제도의 허점과 인간의 존엄성 문제를 다루며 사회 구조에 대해 생각하게 합니다."}
+    ],
+    "윤리와 사상": [
+        {"title": "소크라테스 익스프레스(강연/책 기반 테마)", "info": "다큐멘터리/철학 기반 추천", "ott": "유튜브/도서", "reason": "서양 철학자들의 사상을 삶의 태도와 연결하여 윤리적 삶을 고찰하게 합니다."},
+        {"title": "매트릭스", "info": "SF, 액션 | 주연: 키아누 리브스", "ott": "넷플릭스, 쿠팡플레이", "reason": "플라톤의 '동굴의 비유'와 실재론적 철학을 현대적 감각으로 풀어낸 SF 고전입니다."}
+    ],
+    "세계지리": [
+        {"title": "라이온", "info": "드라마 | 주연: 데브 파텔", "ott": "넷플릭스, 왓챠", "reason": "인도에서 호주까지 이어진 긴 여정을 통해 지리적 환경과 문화적 차이를 느낄 수 있습니다."},
+        {"title": "슬럼독 밀리어네어", "info": "드라마 | 주연: 데브 파텔", "ott": "티빙, 왓챠", "reason": "인도 뭄바이의 도시 구조와 사회상을 통해 세계 지리적 배경을 생생하게 보여줍니다."}
+    ],
+    "한국지리": [
+        {"title": "고산자, 대동여지도", "info": "사극, 드라마 | 주연: 차승원", "ott": "티빙, 네이버시리즈+", "reason": "우리나라 지형을 직접 발로 뛰며 지도로 남기려 했던 김정호의 여정을 담았습니다."},
+        {"title": "리틀 포레스트", "info": "드라마 | 주연: 김태리", "ott": "넷플릭스, 티빙", "reason": "한국의 사계절 풍경과 농촌의 지리적 특성을 따뜻한 시선으로 그려낸 힐링 영화입니다."}
+    ],
+    "생활과 윤리": [
+        {"title": "소원", "info": "드라마 | 주연: 설경구, 엄지원", "ott": "넷플릭스, 왓챠", "reason": "사회적 약자와 피해자에 대한 윤리적 시선, 그리고 연대의 힘을 보여주는 작품입니다."},
+        {"title": "미안해요, 리키", "info": "드라마 | 감독: 켄 로치", "ott": "왓챠", "reason": "현대 노동 윤리와 가족의 가치, 플랫폼 노동 문제를 아주 현실적으로 다룹니다."}
+    ]
 }
 
-st.title("🎬 좋아하는 과목별 영화 추천")
-st.write("과목을 선택하면 관련 영화를 추천해 드립니다.")
+# 메인 UI
+st.title("🎓 과목별 맞춤 영화 추천 서비스")
+st.write("좋아하는 과목을 선택하면 관련 영화 2편과 감상 가능한 OTT를 추천해 드립니다.")
+st.markdown("---")
 
-# 과목 선택
-subject = st.selectbox("어떤 과목을 가장 좋아하시나요?", list(movie_data.keys()))
+# 과목 선택창 (13개 과목)
+subject = st.selectbox(
+    "어떤 과목을 가장 좋아하시나요?",
+    options=list(movie_data.keys()),
+    index=0
+)
 
 if subject:
-    movie = movie_data[subject]
-    st.markdown("---")
+    st.subheader(f"✨ '{subject}' 과목 추천 리스트")
     
-    col1, col2 = st.columns([1, 1.5])
-    
-    with col1:
-        # 이미지를 불러오지 못할 경우 에러 메시지 대신 텍스트가 나오도록 설정
-        try:
-            st.image(movie["image_url"], caption=f"<{movie['title']}> 포스터")
-        except:
-            st.error("이미지를 불러올 수 없습니다. 링크를 확인해주세요.")
+    # 2개의 영화 정보를 순서대로 표시
+    for movie in movie_data[subject]:
+        with st.expander(f"🎬 {movie['title']} (상세보기)", expanded=True):
+            col1, col2 = st.columns([2, 1])
+            with col1:
+                st.write(f"**ℹ️ 기본 정보:** {movie['info']}")
+            with col2:
+                st.markdown(f"**📺 OTT:** :blue[{movie['ott']}]")
             
-    with col2:
-        st.header(movie["title"])
-        st.subheader("📌 영화 정보")
-        st.info(movie["info"])
-        st.subheader("💡 추천 이유")
-        st.success(movie["reason"])
+            st.info(f"**💡 추천 이유**\n\n{movie['reason']}")
+
+st.markdown("---")
+st.caption("본 정보는 배포 시점의 OTT 서비스 현황을 기준으로 작성되었습니다.")
+
