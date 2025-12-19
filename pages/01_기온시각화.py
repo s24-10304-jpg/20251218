@@ -3,86 +3,85 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import os
+import numpy as np
 
 # 1. 페이지 설정
-st.set_page_config(page_title="기온 변화 분석기", layout="wide")
+st.set_page_config(page_title="기온 변화 분석", layout="wide")
 
-st.title("🌡️ 지난 110년 기온 상승 분석 (Interactive)")
-st.markdown("Plotly를 사용하여 기간을 자유롭게 확대/축소하며 기온 변화를 확인할 수 있습니다.")
+st.title("🌡️ 지난 110년 기온 상승 분석")
 
-# 2. 데이터 로드 및 전처리
+# 2. 파일 경로 자동 추적 (에러 방지 핵심)
+# 스트림릿 클라우드 환경에 맞춰 파일 위치를 찾습니다.
+current_dir = os.path.dirname(os.path.abspath(__file__))
+file_name = 'test.py.csv'
+file_path = os.path.join(current_dir, file_name)
+
+# 만약 위 경로에 없다면 현재 작업 디렉토리에서 재시도
+if not os.path.exists(file_path):
+    file_path = file_name
+
 @st.cache_data
-def load_data():
-    file_name = 'test.py.csv'
-    if not os.path.exists(file_name):
-        return None
-
+def load_data(path):
+    # 인코딩 문제(cp949, utf-8) 자동 처리
     try:
-        # 인코딩 문제 해결을 위해 utf-8-sig와 cp949 차례로 시도
-        try:
-            df = pd.read_csv(file_name, encoding='utf-8-sig', quotechar='"')
-        except:
-            df = pd.read_csv(file_name, encoding='cp949', quotechar='"')
+        df = pd.read_csv(path, encoding='utf-8-sig', quotechar='"')
+    except:
+        df = pd.read_csv(path, encoding='cp949', quotechar='"')
+    
+    # 날짜 데이터의 탭(\t) 및 공백 제거
+    df['날짜'] = df['날짜'].astype(str).str.replace(r'[\t\s]', '', regex=True)
+    df['날짜'] = pd.to_datetime(df['날짜'])
+    df['연도'] = df['날짜'].dt.year
+    return df
+
+# 3. 메인 실행 부분
+if os.path.exists(file_path):
+    try:
+        data = load_data(file_path)
         
-        # 날짜 컬럼의 탭(\t) 및 공백 제거 후 데이트타임 변환
-        df['날짜'] = df['날짜'].astype(str).str.replace(r'[\t\s]', '', regex=True)
-        df['날짜'] = pd.to_datetime(df['날짜'])
+        # 연도별 평균 기온 계산
+        yearly_avg = data.groupby('연도')['평균기온(℃)'].mean().reset_index()
+
+        # 사이드바 설정
+        st.sidebar.header("🗓️ 기간 설정")
+        min_y, max_y = int(yearly_avg['연도'].min()), int(yearly_avg['연도'].max())
+        start_y, end_y = st.sidebar.slider("조회 기간 선택", min_y, max_y, (min_y, max_y))
+
+        # 필터링
+        filtered = yearly_avg[(yearly_avg['연도'] >= start_y) & (yearly_avg['연도'] <= end_y)]
+
+        # 결과 지표
+        v1 = filtered.iloc[0]['평균기온(℃)']
+        v2 = filtered.iloc[-1]['평균기온(℃)']
         
-        # 연도 컬럼 생성
-        df['연도'] = df['날짜'].dt.year
-        return df
+        c1, c2 = st.columns(2)
+        c1.metric(f"{start_y}년 평균", f"{v1:.2f} ℃")
+        c2.metric(f"{end_y}년 평균", f"{v2:.2f} ℃", delta=f"{v2-v1:.2f} ℃")
+
+        # 4. Plotly 인터랙티브 그래프
+        st.subheader("연도별 평균 기온 추이 (Interactive)")
+        fig = px.line(filtered, x='연도', y='평균기온(℃)', 
+                      labels={'평균기온(℃)': '평균 기온 (℃)', '연도': '연도'},
+                      template="plotly_white")
+        
+        # 추세선 추가
+        z = np.polyfit(filtered['연도'], filtered['평균기온(℃)'], 1)
+        p = np.poly1d(z)
+        fig.add_trace(go.Scatter(x=filtered['연도'], y=p(filtered['연도']),
+                                 mode='lines', name='기온 상승 추세',
+                                 line=dict(color='red', dash='dash')))
+        
+        st.plotly_chart(fig, use_container_width=True)
+
     except Exception as e:
-        st.error(f"데이터 로드 오류: {e}")
-        return None
-
-df = load_data()
-
-if df is not None:
-    # 3. 데이터 가공 (연도별 평균 기온)
-    yearly_avg = df.groupby('연도')['평균기온(℃)'].mean().reset_index()
-
-    # 4. 사이드바 - 기간 선택
-    st.sidebar.header("📊 분석 설정")
-    min_year, max_year = int(yearly_avg['연도'].min()), int(yearly_avg['연도'].max())
-    year_range = st.sidebar.slider("조회 기간 선택", min_year, max_year, (min_year, max_year))
-
-    # 필터링
-    filtered = yearly_avg[(yearly_avg['연도'] >= year_range[0]) & (yearly_avg['연도'] <= year_range[1])]
-
-    # 5. 주요 지표 표시 (Metric)
-    start_temp = filtered.iloc[0]['평균기온(℃)']
-    end_temp = filtered.iloc[-1]['평균기온(℃)']
-    diff = end_temp - start_temp
-
-    c1, c2, c3 = st.columns(3)
-    c1.metric(f"{year_range[0]}년 평균", f"{start_temp:.2f} ℃")
-    c2.metric(f"{year_range[1]}년 평균", f"{end_temp:.2f} ℃")
-    c3.metric("기온 변화폭", f"{diff:+.2f} ℃", delta=f"{diff:.2f} ℃")
-
-    # 6. Plotly 인터랙티브 시각화
-    st.subheader(f"📈 {year_range[0]}년 ~ {year_range[1]}년 기온 변화 추세")
-    
-    fig = px.line(filtered, x='연도', y='평균기온(℃)', 
-                  title="연도별 평균 기온 변화 (마우스를 올려 확인하세요)",
-                  labels={'평균기온(℃)': '평균 기온 (℃)', '연도': '연도'},
-                  template="plotly_white")
-
-    # 추세선 추가 (Linear Regression Trend)
-    import numpy as np
-    z = np.polyfit(filtered['연도'], filtered['평균기온(℃)'], 1)
-    p = np.poly1d(z)
-    
-    fig.add_trace(go.Scatter(x=filtered['연도'], y=p(filtered['연도']),
-                             mode='lines', name='상승 추세선',
-                             line=dict(color='red', dash='dash')))
-
-    # 인터랙티브 설정 (줌, 툴팁 등)
-    fig.update_layout(hovermode="x unified")
-    st.plotly_chart(fig, use_container_width=True)
-
-    # 7. 데이터 테이블
-    with st.expander("상세 데이터 보기"):
-        st.dataframe(filtered)
-
+        st.error(f"데이터 처리 중 오류 발생: {e}")
 else:
-    st.error("파일 'test.py.csv'를 찾을 수 없습니다. GitHub의 같은 폴더에 파일을 업로드해주세요.")
+    # 파일이 없을 때 나오는 경고창
+    st.error(f"❌ 파일을 찾을 수 없습니다: {file_name}")
+    st.info("""
+    **해결 방법:**
+    1. GitHub에 접속합니다.
+    2. 'Add file' -> 'Upload files'를 누릅니다.
+    3. 내 컴퓨터에 있는 'test.py.csv' 파일을 선택해 업로드합니다.
+    4. **파일 이름이 정확히 'test.py.csv'인지 확인하세요.**
+    """)
