@@ -4,88 +4,59 @@ import matplotlib.pyplot as plt
 import os
 
 # 1. 페이지 설정
-st.set_page_config(page_title="기온 상승 분석기", layout="wide")
+st.set_page_config(page_title="기온 변화 분석", layout="wide")
 
 st.title("🌡️ 지난 110년 기온 상승 분석")
-st.markdown("업로드된 데이터를 바탕으로 장기적인 기온 변화 추세를 확인합니다.")
 
-# 2. 데이터 로드 함수
+# 2. 파일 경로 설정 (절대 경로 추적)
+# 현재 실행 중인 파일(app.py)의 폴더 위치를 찾습니다.
+current_dir = os.path.dirname(os.path.abspath(__file__))
+file_path = os.path.join(current_dir, 'test.py.csv')
+
+# 만약 위 경로에 없다면 현재 작업 폴더에서 다시 시도
+if not os.path.exists(file_path):
+    file_path = 'test.py.csv'
+
 @st.cache_data
-def load_data():
-    file_name = 'test.py.csv'
-    
-    # 파일이 없는 경우를 대비한 예외 처리
-    if not os.path.exists(file_name):
-        st.error(f"'{file_name}' 파일을 찾을 수 없습니다. GitHub 레포지토리에 파일이 있는지 확인해주세요.")
-        return None
-
+def load_data(path):
     try:
-        # 데이터 읽기 (한글 깨짐 방지 및 따옴표 처리)
-        df = pd.read_csv(file_name, encoding='cp949', quotechar='"')
+        # 데이터 로드 (cp949 인코딩 및 따옴표 처리)
+        df = pd.read_csv(path, encoding='cp949', quotechar='"')
         
-        # '날짜' 컬럼의 숨겨진 탭(\t) 기호 제거 및 날짜 형식 변환
+        # 날짜 데이터의 탭(\t) 제거 및 변환
         df['날짜'] = df['날짜'].astype(str).str.replace(r'\s+', '', regex=True)
         df['날짜'] = pd.to_datetime(df['날짜'])
-        
-        # 분석을 위한 '연도' 컬럼 생성
         df['연도'] = df['날짜'].dt.year
         return df
     except Exception as e:
-        st.error(f"데이터 읽기 오류: {e}")
+        st.error(f"파일을 읽는 중 오류가 발생했습니다: {e}")
         return None
 
-data = load_data()
-
-if data is not None:
-    # 3. 데이터 가공 (연도별 평균 기온)
-    yearly_avg = data.groupby('연도')['평균기온(℃)'].mean().reset_index()
-
-    # 4. 사이드바 - 분석 기간 선택
-    st.sidebar.header("📊 분석 설정")
-    min_year = int(yearly_avg['연도'].min())
-    max_year = int(yearly_avg['연도'].max())
-    
-    year_range = st.sidebar.slider(
-        "조회 기간을 선택하세요",
-        min_year, max_year, (min_year, max_year)
-    )
-
-    # 필터링 데이터
-    filtered = yearly_avg[(yearly_avg['연도'] >= year_range[0]) & (yearly_avg['연도'] <= year_range[1])]
-
-    # 5. 핵심 지표 표시 (Metric)
-    st.subheader(f"📅 {year_range[0]}년 대비 기온 변화")
-    
-    start_temp = filtered.iloc[0]['평균기온(℃)']
-    end_temp = filtered.iloc[-1]['평균기온(℃)']
-    diff = end_temp - start_temp
-
-    c1, c2, c3 = st.columns(3)
-    c1.metric(f"{year_range[0]}년 평균", f"{start_temp:.2f} ℃")
-    c2.metric(f"{year_range[1]}년 평균", f"{end_temp:.2f} ℃")
-    c3.metric("기온 상승폭", f"{diff:+.2f} ℃", delta=f"{diff:.2f} ℃")
-
-    # 6. 그래프 시각화 (Matplotlib)
-    st.write("---")
-    st.subheader("연도별 평균 기온 추이 및 추세선")
-    
-    fig, ax = plt.subplots(figsize=(12, 6))
-    ax.plot(filtered['연도'], filtered['평균기온(℃)'], color='#ff9999', marker='o', markersize=3, label='연평균 기온')
-    
-    # 단순 선형 추세선 계산 (기온이 실제로 오르는지 확인용)
-    import numpy as np
-    z = np.polyfit(filtered['연도'], filtered['평균기온(℃)'], 1)
-    p = np.poly1d(z)
-    ax.plot(filtered['연도'], p(filtered['연도']), "r--", linewidth=2, label="상승 추세선")
-
-    ax.set_title(f"{year_range[0]}년 - {year_range[1]}년 기온 변화", fontsize=15)
-    ax.set_xlabel("연도")
-    ax.set_ylabel("평균 기온 (℃)")
-    ax.legend()
-    ax.grid(True, axis='y', alpha=0.3)
-    
-    st.pyplot(fig)
-
-    # 7. 데이터 테이블 보기
-    with st.expander("상세 데이터 확인"):
-        st.dataframe(filtered)
+# 3. 메인 로직
+if os.path.exists(file_path):
+    df = load_data(file_path)
+    if df is not None:
+        # 연도별 평균 계산
+        yearly_avg = df.groupby('연도')['평균기온(℃)'].mean().reset_index()
+        
+        # 슬라이더
+        min_y, max_y = int(yearly_avg['연도'].min()), int(yearly_avg['연도'].max())
+        start_y, end_y = st.sidebar.slider("조회 기간", min_y, max_y, (min_y, max_y))
+        
+        filtered = yearly_avg[(yearly_avg['연도'] >= start_y) & (yearly_avg['연도'] <= end_y)]
+        
+        # 지표 출력
+        v1 = filtered.iloc[0]['평균기온(℃)']
+        v2 = filtered.iloc[-1]['평균기온(℃)']
+        st.metric(f"{start_y}년 대비 {end_y}년 기온 변화", f"{v2:.2f} ℃", f"{v2-v1:+.2f} ℃")
+        
+        # 그래프
+        fig, ax = plt.subplots(figsize=(10, 4))
+        ax.plot(filtered['연도'], filtered['평균기온(℃)'], color='red')
+        ax.set_title("Annual Average Temperature Trend")
+        ax.set_xlabel("Year")
+        ax.set_ylabel("Temp (℃)")
+        st.pyplot(fig)
+else:
+    st.error(f"❌ '{file_path}' 파일을 찾을 수 없습니다.")
+    st.warning("GitHub에 'test.py.csv' 파일이 업로드 되었는지 확인해 주세요. 파일명이 정확해야 합니다.")
